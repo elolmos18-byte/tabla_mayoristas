@@ -1,0 +1,23 @@
+# Entorno virtual - se recrea con requirements.txt, no va en git
+venv/
+
+# Cache de Python
+__pycache__/
+*.pyc
+
+# Datos generados por el scraper - se regeneran solos, no hace falta
+# versionarlos (además pesan mucho: el JSON completo son ~5-6 MB)
+output/
+
+# Estado del sistema de muestreo - se reconstruye con elegir_referencias.py
+# a partir de los datos scrapeados, no hace falta versionarlo
+estado_rubros.json
+
+# Base de datos - es DATO, no código. Crece con cada corrida y no
+# tiene sentido versionarla en git (además puede pesar bastante con
+# el tiempo). Se crea una sola vez en el VPS con crear_historico_mayorista.py
+# y vive ahí, no viaja por git.
+*.db
+
+# Logs del cron
+*.log
