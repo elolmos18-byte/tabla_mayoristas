@@ -299,6 +299,13 @@
     margin: 6px 0;
     line-height: 1.4;
   }
+  .link-confirmar {
+    display: inline-block;
+    margin-top: 4px;
+    font-weight: 700;
+    color: var(--warn);
+    text-decoration: underline;
+  }
 
   .lista-footer {
     padding: 18px 20px;
@@ -682,7 +689,14 @@ function renderLista() {
           </div>
           <div class="lista-item-precio">${subtotal != null ? '$' + fmtMoney(subtotal) : 'sin precio'}</div>
         </div>
-        ${modo === 'bulto' ? '<div class="aviso-bulto">⚠️ Este precio requiere comprar el pack completo - confirmá la cantidad mínima en la ficha del producto antes de comprar</div>' : ''}
+        ${modo === 'bulto' ? `
+        <div class="aviso-bulto">
+          ⚠️ Este precio es solo si comprás el pack cerrado completo.
+          Antes de comprar, entrá a la página del producto para ver la
+          disponibilidad y elegir la cantidad correcta del pack:
+          ${producto.url_producto ? `<a href="${producto.url_producto}" target="_blank" rel="noopener" class="link-confirmar">Confirmar en Maxiconsumo ↗</a>` : '(sin link disponible)'}
+        </div>
+        ` : ''}
         <button class="lista-item-quitar" onclick="quitarDeLista('${producto.sku}')">Quitar</button>
       </div>
     `;
