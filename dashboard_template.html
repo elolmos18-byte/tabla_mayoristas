@@ -165,6 +165,7 @@
   .best-row { background: var(--accent-soft) !important; }
   a.ver { font-size: 11px; color: var(--accent); text-decoration: none; }
   a.ver:hover { text-decoration: underline; }
+  a.ver-directo { color: var(--muted); font-size: 10px; margin-left: 6px; }
   .empty-state {
     padding: 60px 20px;
     text-align: center;
@@ -302,9 +303,19 @@
   .link-confirmar {
     display: inline-block;
     margin-top: 4px;
+    margin-right: 8px;
     font-weight: 700;
     color: var(--warn);
     text-decoration: underline;
+  }
+  .link-recomendado {
+    color: var(--accent) !important;
+  }
+  .nota-link-roto {
+    font-size: 9.5px;
+    color: var(--muted);
+    margin-top: 4px;
+    font-style: italic;
   }
 
   .lista-footer {
@@ -433,6 +444,14 @@ function palabraCoincide(palabraBusqueda, nombreLower, tokens) {
   return tokens.some(t => distanciaEdicion(t, palabraBusqueda) <= tolerancia);
 }
 
+function urlBusqueda(nombre) {
+  // Link de búsqueda por nombre - más robusto que el link directo al
+  // producto, porque no depende de que Maxiconsumo no haya movido el
+  // producto de categoría (cosa que rompe el link directo seguido,
+  // sin que nuestro sistema de chequeo de precios lo detecte).
+  return `https://www.maxiconsumo.com/sucursal_trelew/catalogsearch/result/?q=${encodeURIComponent(nombre)}`;
+}
+
 function nombreRubro(raiz) {
   const mapa = {
     'almacen.html': 'Almacén',
@@ -555,7 +574,10 @@ function renderTabla() {
         <td class="nombre">
           ${p.nombre}
           ${critico ? '<div class="estado-critico">Disponibilidad crítica</div>' : ''}
-          ${p.url_producto ? `<div><a class="ver" href="${p.url_producto}" target="_blank" rel="noopener">Ver en Maxiconsumo ↗</a></div>` : ''}
+          <div>
+            <a class="ver" href="${urlBusqueda(p.nombre)}" target="_blank" rel="noopener">Buscar en Maxiconsumo ↗</a>
+            ${p.url_producto ? `<a class="ver ver-directo" href="${p.url_producto}" target="_blank" rel="noopener">(o probar link directo)</a>` : ''}
+          </div>
         </td>
         <td class="rubro-tag">${nombreRubro(p.categoria_raiz)}</td>
         <td class="precio">${p.precio_bulto_cerrado != null ? '$' + fmtMoney(p.precio_bulto_cerrado) : '<span class="sin-precio">sin dato</span>'}</td>
@@ -694,7 +716,11 @@ function renderLista() {
           ⚠️ Este precio es solo si comprás el pack cerrado completo.
           Antes de comprar, entrá a la página del producto para ver la
           disponibilidad y elegir la cantidad correcta del pack:
-          ${producto.url_producto ? `<a href="${producto.url_producto}" target="_blank" rel="noopener" class="link-confirmar">Confirmar en Maxiconsumo ↗</a>` : '(sin link disponible)'}
+          ${producto.url_producto ? `<a href="${producto.url_producto}" target="_blank" rel="noopener" class="link-confirmar">Link directo ↗</a>` : ''}
+          <a href="${urlBusqueda(producto.nombre)}" target="_blank" rel="noopener" class="link-confirmar link-recomendado">
+            Buscar en Maxiconsumo (recomendado) ↗
+          </a>
+          <div class="nota-link-roto">Preferí el link de búsqueda - el directo a veces se rompe si Maxiconsumo reorganiza categorías</div>
         </div>
         ` : ''}
         <button class="lista-item-quitar" onclick="quitarDeLista('${producto.sku}')">Quitar</button>
