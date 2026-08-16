@@ -158,6 +158,7 @@ def main():
         print(f"\n✅ Sin cambios en la muestra ({len(precios_nuevos)} productos revisados, 0 cambiaron). No hace falta actualizar {nombre_rubro} hoy.")
         datos_rubro["precios_muestra"] = precios_nuevos
         datos_rubro["ultima_actualizacion_completa"] = datetime.now(timezone.utc).isoformat()
+        datos_rubro["ultimo_resultado"] = "sin_cambios"
         guardar_estado(estado)
         return
 
@@ -170,9 +171,12 @@ def main():
     if completo:
         datos_rubro["precios_muestra"] = precios_nuevos
         datos_rubro["ultima_actualizacion_completa"] = datetime.now(timezone.utc).isoformat()
+        datos_rubro["ultimo_resultado"] = "completo"
         guardar_estado(estado)
         print(f"Estado actualizado en {ESTADO_PATH}")
     else:
+        datos_rubro["ultimo_resultado"] = "incompleto"
+        guardar_estado(estado)
         print("Como quedó incompleto, NO actualizo la fecha - va a reintentarse en la próxima corrida.")
 
 

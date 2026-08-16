@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Índice Mayorista — Maxiconsumo Trelew</title>
+<style>
+  :root {
+    --ink: #1c1917;
+    --paper: #faf7f2;
+    --paper-raised: #ffffff;
+    --line: #e7e0d4;
+    --accent: #2f6f4f;
+    --accent-soft: #e5f0e9;
+    --warn: #b5490f;
+    --warn-soft: #fbe8dd;
+    --muted: #8a8377;
+    --mono: 'SF Mono', 'Consolas', 'Menlo', monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  header {
+    padding: 28px 32px 20px;
+    border-bottom: 2px solid var(--ink);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  header h1 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+  header .sub {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+  header .meta {
+    text-align: right;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .controls {
+    padding: 18px 32px;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+    background: var(--paper-raised);
+    border-bottom: 1px solid var(--line);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .controls input[type="text"] {
+    flex: 1;
+    min-width: 220px;
+    padding: 10px 14px;
+    border: 1.5px solid var(--line);
+    border-radius: 8px;
+    font-size: 14px;
+    background: var(--paper);
+  }
+  .controls input[type="text"]:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  select {
+    padding: 10px 12px;
+    border: 1.5px solid var(--line);
+    border-radius: 8px;
+    background: var(--paper);
+    font-size: 13px;
+    color: var(--ink);
+  }
+  .chip {
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    white-space: nowrap;
+  }
+  main { padding: 4px 32px 60px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+  thead th {
+    text-align: left;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    padding: 10px 10px;
+    border-bottom: 1.5px solid var(--ink);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+  thead th:hover { color: var(--ink); }
+  thead th.sorted { color: var(--accent); }
+  thead th .arrow { font-size: 9px; margin-left: 3px; }
+  tbody td {
+    padding: 10px 10px;
+    border-bottom: 1px solid var(--line);
+    font-size: 13.5px;
+    vertical-align: top;
+  }
+  tbody tr:hover { background: rgba(47,111,79,0.04); }
+  .nombre { font-weight: 600; max-width: 340px; }
+  .rubro-tag {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  .precio { font-family: var(--mono); white-space: nowrap; }
+  .precio-norm { font-family: var(--mono); font-weight: 700; white-space: nowrap; }
+  .sin-precio { color: var(--muted); font-style: italic; font-size: 12px; }
+  .estado-critico {
+    display: inline-block;
+    font-size: 10px;
+    font-family: var(--mono);
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: var(--warn-soft);
+    color: var(--warn);
+    margin-top: 3px;
+  }
+  .flecha { font-weight: 800; margin-left: 4px; }
+  .flecha-subio { color: var(--warn); }
+  .flecha-bajo { color: var(--accent); }
+  .flecha-igual { color: var(--muted); }
+
+  #bannerEstado {
+    padding: 10px 32px;
+    background: var(--paper);
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    font-family: var(--mono);
+    font-size: 11px;
+  }
+  .pill-rubro {
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    color: var(--muted);
+  }
+  .pill-rubro.completo { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+  .pill-rubro.sin_cambios { border-color: var(--line); color: var(--muted); }
+  .pill-rubro.incompleto { border-color: var(--warn); color: var(--warn); background: var(--warn-soft); }
+  .best-row { background: var(--accent-soft) !important; }
+  a.ver { font-size: 11px; color: var(--accent); text-decoration: none; }
+  a.ver:hover { text-decoration: underline; }
+  .empty-state {
+    padding: 60px 20px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .count-line {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+    padding: 12px 0 0;
+  }
+  ::selection { background: var(--accent); color: white; }
+
+  /* --- Lista de compras --- */
+  .btn-agregar {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 5px 9px;
+    border: 1.5px solid var(--accent);
+    color: var(--accent);
+    background: transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .btn-agregar:hover { background: var(--accent); color: white; }
+  .btn-agregar.en-lista { background: var(--accent); color: white; }
+
+  #listaFlotante {
+    position: fixed;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 340px;
+    background: var(--paper-raised);
+    border-left: 2px solid var(--ink);
+    box-shadow: -8px 0 24px rgba(0,0,0,0.08);
+    transform: translateX(100%);
+    transition: transform 0.25s ease;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+  }
+  #listaFlotante.abierta { transform: translateX(0); }
+
+  #botonAbrirLista {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    background: var(--ink);
+    color: white;
+    border: none;
+    border-radius: 999px;
+    padding: 14px 20px;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+    z-index: 90;
+  }
+  #botonAbrirLista .badge {
+    background: var(--accent);
+    color: white;
+    border-radius: 999px;
+    padding: 2px 7px;
+    margin-left: 8px;
+    font-size: 11px;
+  }
+
+  .lista-header {
+    padding: 20px;
+    border-bottom: 1.5px solid var(--ink);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .lista-header h2 { margin: 0; font-size: 16px; }
+  .lista-header button { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--muted); }
+
+  .lista-items { flex: 1; overflow-y: auto; padding: 12px 20px; }
+  .lista-item {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .lista-item-nombre { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+  .lista-item-row { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+  .lista-item-cant {
+    display: flex; align-items: center; gap: 4px;
+  }
+  .lista-item-cant button {
+    width: 24px; height: 24px; border-radius: 6px; border: 1px solid var(--line);
+    background: var(--paper); cursor: pointer; font-size: 14px; line-height: 1;
+  }
+  .lista-item-cant input {
+    width: 36px; text-align: center; border: 1px solid var(--line); border-radius: 6px;
+    padding: 3px; font-family: var(--mono); font-size: 13px;
+  }
+  .lista-item-precio { font-family: var(--mono); font-size: 13px; font-weight: 700; }
+  .lista-item-quitar { font-size: 11px; color: var(--warn); background: none; border: none; cursor: pointer; margin-top: 4px; }
+
+  .lista-footer {
+    padding: 18px 20px;
+    border-top: 1.5px solid var(--ink);
+    background: var(--paper);
+  }
+  .lista-total-row { display: flex; justify-content: space-between; font-size: 15px; font-weight: 800; margin-bottom: 12px; }
+  .lista-total-row .precio-norm { font-size: 16px; }
+  .btn-copiar {
+    width: 100%;
+    padding: 12px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .lista-vacia { color: var(--muted); font-size: 13px; text-align: center; padding: 40px 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Índice Mayorista</h1>
+    <div class="sub">Maxiconsumo — sucursal Trelew</div>
+  </div>
+  <div class="meta" id="metaInfo"></div>
+</header>
+
+<div id="bannerEstado"></div>
+
+<div class="controls">
+  <input type="text" id="buscador" placeholder="Buscar producto (ej: cacao, aceite, detergente)...">
+  <select id="filtroRubro"></select>
+  <select id="ordenarPor">
+    <option value="precio_norm_asc">Precio normalizado: más barato primero</option>
+    <option value="precio_norm_desc">Precio normalizado: más caro primero</option>
+    <option value="nombre_asc">Nombre: A-Z</option>
+  </select>
+  <span class="chip" id="contadorChip">— productos</span>
+  <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); font-family:var(--mono); cursor:pointer;">
+    <input type="checkbox" id="ocultarSinPrecio" checked>
+    Ocultar sin precio
+  </label>
+</div>
+
+<main>
+  <table>
+    <thead>
+      <tr>
+        <th data-col="nombre">Producto</th>
+        <th data-col="rubro">Rubro</th>
+        <th data-col="bulto">$ Bulto cerrado</th>
+        <th data-col="unitario">$ Unitario</th>
+        <th data-col="normalizado_bulto">$/kg·L·un (bulto)</th>
+        <th data-col="normalizado_unitario">$/kg·L·un (unitario)</th>
+        <th>Lista</th>
+      </tr>
+    </thead>
+    <tbody id="tablaBody"></tbody>
+  </table>
+  <div id="emptyState" class="empty-state" style="display:none;">No encontré productos con ese filtro.</div>
+</main>
+
+<button id="botonAbrirLista" onclick="toggleLista(true)">
+  🛒 Mi lista <span class="badge" id="badgeCantidad">0</span>
+</button>
+
+<div id="listaFlotante">
+  <div class="lista-header">
+    <h2>Mi lista de compras</h2>
+    <button onclick="toggleLista(false)">✕</button>
+  </div>
+  <div class="lista-items" id="listaItems"></div>
+  <div class="lista-footer">
+    <div class="lista-total-row">
+      <span>Total estimado</span>
+      <span class="precio-norm" id="listaTotal">$0</span>
+    </div>
+    <button class="btn-copiar" onclick="copiarLista()">Copiar lista (para WhatsApp/notas)</button>
+  </div>
+</div>
+
+<script>
+const DATA = __DATA_JSON__;
+const ESTADO_RUBROS = __ESTADO_RUBROS_JSON__;
+
+const fmtMoney = (n) => n == null ? null : new Intl.NumberFormat('es-AR', {minimumFractionDigits: 2, maximumFractionDigits: 2}).format(n);
+
+// Distancia de edición entre 2 palabras (cuántas letras hay que
+// cambiar/agregar/sacar para pasar de una a otra). Se usa para tolerar
+// errores de tipeo o variantes de escritura (ej. "spaguetti" vs
+// "spaghetti" - la gente escribe la fonética en español, el catálogo
+// usa la ortografía italiana/inglesa).
+function distanciaEdicion(a, b) {
+  const m = a.length, n = b.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+  const dp = Array.from({length: m + 1}, () => new Array(n + 1).fill(0));
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      const costo = a[i-1] === b[j-1] ? 0 : 1;
+      dp[i][j] = Math.min(
+        dp[i-1][j] + 1,
+        dp[i][j-1] + 1,
+        dp[i-1][j-1] + costo
+      );
+    }
+  }
+  return dp[m][n];
+}
+
+function palabraCoincide(palabraBusqueda, nombreLower, tokens) {
+  // 1) match exacto por substring (rápido, cubre la mayoría de los casos)
+  if (nombreLower.includes(palabraBusqueda)) return true;
+  // 2) fallback difuso: solo si el match exacto falló, comparamos la
+  // palabra buscada contra cada palabra suelta del nombre, tolerando
+  // unas pocas letras de diferencia (proporcional al largo de la palabra)
+  const tolerancia = Math.min(2, Math.max(1, Math.floor(palabraBusqueda.length / 4)));
+  return tokens.some(t => distanciaEdicion(t, palabraBusqueda) <= tolerancia);
+}
+
+function nombreRubro(raiz) {
+  const mapa = {
+    'almacen.html': 'Almacén',
+    'bebidas.html': 'Bebidas',
+    'frescos.html': 'Frescos',
+    'congelados.html': 'Congelados',
+    'limpieza.html': 'Limpieza',
+  };
+  return mapa[raiz] || raiz;
+}
+
+function flechaHtml(tendencia) {
+  if (tendencia === 'subio') return '<span class="flecha flecha-subio">▲</span>';
+  if (tendencia === 'bajo') return '<span class="flecha flecha-bajo">▼</span>';
+  if (tendencia === 'igual') return '<span class="flecha flecha-igual">=</span>';
+  return ''; // sin historial previo - no mostramos nada, no inventamos una tendencia
+}
+
+function renderBanner() {
+  const cont = document.getElementById('bannerEstado');
+  const entradas = Object.entries(ESTADO_RUBROS || {});
+  if (entradas.length === 0) { cont.style.display = 'none'; return; }
+
+  const textoResultado = {
+    completo: 'actualización completa',
+    sin_cambios: 'sin cambios (solo verificado)',
+    incompleto: 'incompleto, reintentando',
+    desconocido: 'sin datos',
+  };
+
+  cont.innerHTML = entradas.map(([rubro, info]) => {
+    const fecha = info.ultima_actualizacion ? new Date(info.ultima_actualizacion).toLocaleDateString('es-AR') : 'nunca';
+    const resultado = info.ultimo_resultado || 'desconocido';
+    const texto = textoResultado[resultado] || resultado;
+    return `<span class="pill-rubro ${resultado}">${info.nombre_legible}: ${texto} (${fecha})</span>`;
+  }).join('');
+}
+
+// Normalizamos los tipos (vienen como texto del CSV->JSON)
+const productos = DATA.map(p => ({
+  ...p,
+  precio_bulto_cerrado: p.precio_bulto_cerrado ? parseFloat(p.precio_bulto_cerrado) : null,
+  precio_unitario: p.precio_unitario ? parseFloat(p.precio_unitario) : null,
+  precio_bulto_cerrado_normalizado: p.precio_bulto_cerrado_normalizado ? parseFloat(p.precio_bulto_cerrado_normalizado) : null,
+  precio_unitario_normalizado: p.precio_unitario_normalizado ? parseFloat(p.precio_unitario_normalizado) : null,
+  _nombreLower: p.nombre.toLowerCase(),
+  _tokens: p.nombre.toLowerCase().split(/\s+/),
+}));
+
+// Poblar el select de rubros
+const rubros = [...new Set(productos.map(p => p.categoria_raiz))].sort();
+const selectRubro = document.getElementById('filtroRubro');
+selectRubro.innerHTML = '<option value="">Todos los rubros</option>' +
+  rubros.map(r => `<option value="${r}">${nombreRubro(r)}</option>`).join('');
+
+document.getElementById('metaInfo').innerHTML =
+  `${productos.length.toLocaleString('es-AR')} productos · sucursal Trelew`;
+
+let ordenActual = 'precio_norm_asc';
+let colOrdenTabla = null;
+let colOrdenDir = 1;
+
+function renderTabla() {
+  const q = document.getElementById('buscador').value.trim().toLowerCase();
+  const rubroFiltro = selectRubro.value;
+  const ocultarSinPrecio = document.getElementById('ocultarSinPrecio').checked;
+  ordenActual = document.getElementById('ordenarPor').value;
+
+  let filtrados = productos.filter(p => {
+    const palabras = q.split(/\s+/).filter(Boolean);
+    const matchNombre = palabras.length === 0 || palabras.every(palabra => palabraCoincide(palabra, p._nombreLower, p._tokens));
+    const matchRubro = !rubroFiltro || p.categoria_raiz === rubroFiltro;
+    const tienePrecio = p.precio_bulto_cerrado != null || p.precio_unitario != null;
+    const matchPrecio = !ocultarSinPrecio || tienePrecio;
+    return matchNombre && matchRubro && matchPrecio;
+  });
+
+  // Orden
+  if (colOrdenTabla) {
+    filtrados.sort((a, b) => {
+      let va, vb;
+      if (colOrdenTabla === 'nombre') { va = a.nombre; vb = b.nombre; return colOrdenDir * va.localeCompare(vb); }
+      if (colOrdenTabla === 'rubro') { va = a.categoria_raiz; vb = b.categoria_raiz; return colOrdenDir * va.localeCompare(vb); }
+      if (colOrdenTabla === 'bulto') { va = a.precio_bulto_cerrado ?? Infinity; vb = b.precio_bulto_cerrado ?? Infinity; return colOrdenDir * (va - vb); }
+      if (colOrdenTabla === 'unitario') { va = a.precio_unitario ?? Infinity; vb = b.precio_unitario ?? Infinity; return colOrdenDir * (va - vb); }
+      if (colOrdenTabla === 'normalizado_bulto') { va = a.precio_bulto_cerrado_normalizado ?? Infinity; vb = b.precio_bulto_cerrado_normalizado ?? Infinity; return colOrdenDir * (va - vb); }
+      if (colOrdenTabla === 'normalizado_unitario') { va = a.precio_unitario_normalizado ?? Infinity; vb = b.precio_unitario_normalizado ?? Infinity; return colOrdenDir * (va - vb); }
+      return 0;
+    });
+  } else {
+    if (ordenActual === 'precio_norm_asc') {
+      filtrados.sort((a, b) => (a.precio_bulto_cerrado_normalizado ?? Infinity) - (b.precio_bulto_cerrado_normalizado ?? Infinity));
+    } else if (ordenActual === 'precio_norm_desc') {
+      filtrados.sort((a, b) => (b.precio_bulto_cerrado_normalizado ?? -Infinity) - (a.precio_bulto_cerrado_normalizado ?? -Infinity));
+    } else if (ordenActual === 'nombre_asc') {
+      filtrados.sort((a, b) => a.nombre.localeCompare(b.nombre));
+    }
+  }
+
+  document.getElementById('contadorChip').textContent = `${filtrados.length.toLocaleString('es-AR')} productos`;
+
+  const LIMITE = 500; // limitamos el render para que no cuelgue el navegador con miles de filas
+  const mostrar = filtrados.slice(0, LIMITE);
+
+  const tbody = document.getElementById('tablaBody');
+  const empty = document.getElementById('emptyState');
+
+  if (mostrar.length === 0) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  tbody.innerHTML = mostrar.map(p => {
+    const unidad = p.unidad_detectada || '';
+    const critico = p.estado_stock && p.estado_stock.toLowerCase().includes('critica');
+    return `
+      <tr>
+        <td class="nombre">
+          ${p.nombre}
+          ${critico ? '<div class="estado-critico">Disponibilidad crítica</div>' : ''}
+          ${p.url_producto ? `<div><a class="ver" href="${p.url_producto}" target="_blank" rel="noopener">Ver en Maxiconsumo ↗</a></div>` : ''}
+        </td>
+        <td class="rubro-tag">${nombreRubro(p.categoria_raiz)}</td>
+        <td class="precio">${p.precio_bulto_cerrado != null ? '$' + fmtMoney(p.precio_bulto_cerrado) : '<span class="sin-precio">sin dato</span>'}</td>
+        <td class="precio">${p.precio_unitario != null ? '$' + fmtMoney(p.precio_unitario) : '<span class="sin-precio">sin dato</span>'}</td>
+        <td class="precio-norm">${p.precio_bulto_cerrado_normalizado != null ? '$' + fmtMoney(p.precio_bulto_cerrado_normalizado) + (unidad ? '/' + unidad : '') + flechaHtml(p.tendencia) : '<span class="sin-precio">—</span>'}</td>
+        <td class="precio-norm">${p.precio_unitario_normalizado != null ? '$' + fmtMoney(p.precio_unitario_normalizado) + (unidad ? '/' + unidad : '') : '<span class="sin-precio">—</span>'}</td>
+        <td>
+          <button class="btn-agregar ${lista[p.sku] ? 'en-lista' : ''}" onclick="agregarALista('${p.sku}')">
+            ${lista[p.sku] ? '✓ En lista' : '+ Agregar'}
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  if (filtrados.length > LIMITE) {
+    tbody.innerHTML += `<tr><td colspan="6" class="count-line" style="padding:16px 10px;">Mostrando los primeros ${LIMITE} de ${filtrados.length.toLocaleString('es-AR')} resultados — afiná la búsqueda para ver más.</td></tr>`;
+  }
+}
+
+let debounceTimer = null;
+document.getElementById('buscador').addEventListener('input', () => {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(renderTabla, 150);
+});
+selectRubro.addEventListener('change', renderTabla);
+document.getElementById('ocultarSinPrecio').addEventListener('change', renderTabla);
+document.getElementById('ordenarPor').addEventListener('change', () => { colOrdenTabla = null; renderTabla(); });
+
+document.querySelectorAll('thead th[data-col]').forEach(th => {
+  th.addEventListener('click', () => {
+    const col = th.getAttribute('data-col');
+    if (colOrdenTabla === col) { colOrdenDir *= -1; } else { colOrdenTabla = col; colOrdenDir = 1; }
+    document.querySelectorAll('thead th').forEach(t => t.classList.remove('sorted'));
+    th.classList.add('sorted');
+    renderTabla();
+  });
+});
+
+// ============ LISTA DE COMPRAS ============
+// Vive solo en memoria (variable JS) - se pierde si recargás la página.
+// Por eso el botón "Copiar lista" para sacarla antes de cerrar.
+const lista = {}; // { sku: { producto, cantidad } }
+
+function toggleLista(abrir) {
+  document.getElementById('listaFlotante').classList.toggle('abierta', abrir);
+}
+
+function agregarALista(sku) {
+  if (lista[sku]) {
+    // Ya está en la lista - un segundo click la quita
+    delete lista[sku];
+  } else {
+    const producto = productos.find(p => p.sku === sku);
+    if (!producto) return;
+    lista[sku] = { producto, cantidad: 1 };
+    toggleLista(true);
+  }
+  renderTabla();
+  renderLista();
+}
+
+function cambiarCantidad(sku, delta) {
+  if (!lista[sku]) return;
+  lista[sku].cantidad = Math.max(1, lista[sku].cantidad + delta);
+  renderLista();
+}
+
+function setCantidad(sku, valor) {
+  if (!lista[sku]) return;
+  const n = parseInt(valor, 10);
+  lista[sku].cantidad = isNaN(n) || n < 1 ? 1 : n;
+  renderLista();
+}
+
+function quitarDeLista(sku) {
+  delete lista[sku];
+  renderTabla();
+  renderLista();
+}
+
+function precioParaLista(producto) {
+  // Usamos el precio de bulto cerrado si existe (suele ser el más
+  // conveniente en mayorista), si no el unitario
+  return producto.precio_bulto_cerrado ?? producto.precio_unitario ?? null;
+}
+
+function renderLista() {
+  const items = Object.values(lista);
+  document.getElementById('badgeCantidad').textContent = items.length;
+
+  const cont = document.getElementById('listaItems');
+  if (items.length === 0) {
+    cont.innerHTML = '<div class="lista-vacia">Todavía no agregaste productos.<br>Buscá algo arriba y tocá "+ Agregar".</div>';
+    document.getElementById('listaTotal').textContent = '$0';
+    return;
+  }
+
+  let total = 0;
+  cont.innerHTML = items.map(({producto, cantidad}) => {
+    const precioUnit = precioParaLista(producto);
+    const subtotal = precioUnit != null ? precioUnit * cantidad : null;
+    if (subtotal != null) total += subtotal;
+    return `
+      <div class="lista-item">
+        <div class="lista-item-nombre">${producto.nombre}</div>
+        <div class="lista-item-row">
+          <div class="lista-item-cant">
+            <button onclick="cambiarCantidad('${producto.sku}', -1)">−</button>
+            <input type="text" value="${cantidad}" onchange="setCantidad('${producto.sku}', this.value)">
+            <button onclick="cambiarCantidad('${producto.sku}', 1)">+</button>
+          </div>
+          <div class="lista-item-precio">${subtotal != null ? '$' + fmtMoney(subtotal) : 'sin precio'}</div>
+        </div>
+        <button class="lista-item-quitar" onclick="quitarDeLista('${producto.sku}')">Quitar</button>
+      </div>
+    `;
+  }).join('');
+
+  document.getElementById('listaTotal').textContent = '$' + fmtMoney(total);
+}
+
+function copiarLista() {
+  const items = Object.values(lista);
+  if (items.length === 0) {
+    alert('La lista está vacía.');
+    return;
+  }
+  let texto = '🛒 Lista de compras — Maxiconsumo (Índice Mayorista)\n\n';
+  let total = 0;
+  items.forEach(({producto, cantidad}) => {
+    const precioUnit = precioParaLista(producto);
+    const subtotal = precioUnit != null ? precioUnit * cantidad : null;
+    if (subtotal != null) total += subtotal;
+    texto += `• ${producto.nombre} x${cantidad}` + (subtotal != null ? ` — $${fmtMoney(subtotal)}` : '') + '\n';
+  });
+  texto += `\nTotal estimado: $${fmtMoney(total)}`;
+
+  navigator.clipboard.writeText(texto).then(() => {
+    alert('Lista copiada — pegala en WhatsApp, notas, o donde quieras.');
+  }).catch(() => {
+    // Fallback si el navegador bloquea el clipboard (poco común)
+    prompt('Copiá el texto manualmente:', texto);
+  });
+}
+
+renderTabla();
+renderLista();
+renderBanner();
+</script>
+
+</body>
+</html>
