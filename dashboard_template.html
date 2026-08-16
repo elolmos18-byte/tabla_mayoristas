@@ -267,6 +267,39 @@
   .lista-item-precio { font-family: var(--mono); font-size: 13px; font-weight: 700; }
   .lista-item-quitar { font-size: 11px; color: var(--warn); background: none; border: none; cursor: pointer; margin-top: 4px; }
 
+  .lista-item-modo {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .modo-btn {
+    flex: 1;
+    font-size: 10.5px;
+    font-family: var(--mono);
+    padding: 6px 4px;
+    border: 1.5px solid var(--line);
+    border-radius: 6px;
+    background: var(--paper);
+    color: var(--muted);
+    cursor: pointer;
+    text-align: center;
+  }
+  .modo-btn.activo {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-weight: 700;
+  }
+  .aviso-bulto {
+    font-size: 10.5px;
+    color: var(--warn);
+    background: var(--warn-soft);
+    padding: 6px 8px;
+    border-radius: 6px;
+    margin: 6px 0;
+    line-height: 1.4;
+  }
+
   .lista-footer {
     padding: 18px 20px;
     border-top: 1.5px solid var(--ink);
@@ -571,7 +604,7 @@ function agregarALista(sku) {
   } else {
     const producto = productos.find(p => p.sku === sku);
     if (!producto) return;
-    lista[sku] = { producto, cantidad: 1 };
+    lista[sku] = { producto, cantidad: 1, modo: 'unitario' };
     toggleLista(true);
   }
   renderTabla();
@@ -597,10 +630,22 @@ function quitarDeLista(sku) {
   renderLista();
 }
 
-function precioParaLista(producto) {
-  // Usamos el precio de bulto cerrado si existe (suele ser el más
-  // conveniente en mayorista), si no el unitario
-  return producto.precio_bulto_cerrado ?? producto.precio_unitario ?? null;
+function setModo(sku, modo) {
+  if (!lista[sku]) return;
+  lista[sku].modo = modo;
+  renderLista();
+}
+
+function precioParaLista(producto, modo) {
+  // El modo lo elige la persona: 'bulto' asume que va a comprar el
+  // PACK COMPLETO (no sabemos el tamaño exacto del pack - eso hay que
+  // confirmarlo en la ficha del producto en Maxiconsumo antes de
+  // comprar). 'unitario' es el precio seguro para cualquier cantidad
+  // suelta, sin condiciones.
+  if (modo === 'bulto' && producto.precio_bulto_cerrado != null) {
+    return producto.precio_bulto_cerrado;
+  }
+  return producto.precio_unitario ?? producto.precio_bulto_cerrado ?? null;
 }
 
 function renderLista() {
@@ -615,13 +660,20 @@ function renderLista() {
   }
 
   let total = 0;
-  cont.innerHTML = items.map(({producto, cantidad}) => {
-    const precioUnit = precioParaLista(producto);
+  cont.innerHTML = items.map(({producto, cantidad, modo}) => {
+    const precioUnit = precioParaLista(producto, modo);
     const subtotal = precioUnit != null ? precioUnit * cantidad : null;
     if (subtotal != null) total += subtotal;
+    const tieneBulto = producto.precio_bulto_cerrado != null;
     return `
       <div class="lista-item">
         <div class="lista-item-nombre">${producto.nombre}</div>
+        ${tieneBulto ? `
+        <div class="lista-item-modo">
+          <button class="modo-btn ${modo === 'unitario' ? 'activo' : ''}" onclick="setModo('${producto.sku}', 'unitario')">Suelto ($${fmtMoney(producto.precio_unitario)})</button>
+          <button class="modo-btn ${modo === 'bulto' ? 'activo' : ''}" onclick="setModo('${producto.sku}', 'bulto')">Pack cerrado ($${fmtMoney(producto.precio_bulto_cerrado)})</button>
+        </div>
+        ` : ''}
         <div class="lista-item-row">
           <div class="lista-item-cant">
             <button onclick="cambiarCantidad('${producto.sku}', -1)">−</button>
@@ -630,6 +682,7 @@ function renderLista() {
           </div>
           <div class="lista-item-precio">${subtotal != null ? '$' + fmtMoney(subtotal) : 'sin precio'}</div>
         </div>
+        ${modo === 'bulto' ? '<div class="aviso-bulto">⚠️ Este precio requiere comprar el pack completo - confirmá la cantidad mínima en la ficha del producto antes de comprar</div>' : ''}
         <button class="lista-item-quitar" onclick="quitarDeLista('${producto.sku}')">Quitar</button>
       </div>
     `;
@@ -646,11 +699,12 @@ function copiarLista() {
   }
   let texto = '🛒 Lista de compras — Maxiconsumo (Índice Mayorista)\n\n';
   let total = 0;
-  items.forEach(({producto, cantidad}) => {
-    const precioUnit = precioParaLista(producto);
+  items.forEach(({producto, cantidad, modo}) => {
+    const precioUnit = precioParaLista(producto, modo);
     const subtotal = precioUnit != null ? precioUnit * cantidad : null;
     if (subtotal != null) total += subtotal;
-    texto += `• ${producto.nombre} x${cantidad}` + (subtotal != null ? ` — $${fmtMoney(subtotal)}` : '') + '\n';
+    const etiquetaModo = modo === 'bulto' ? ' [PACK CERRADO]' : '';
+    texto += `• ${producto.nombre}${etiquetaModo} x${cantidad}` + (subtotal != null ? ` — $${fmtMoney(subtotal)}` : '') + '\n';
   });
   texto += `\nTotal estimado: $${fmtMoney(total)}`;
 
