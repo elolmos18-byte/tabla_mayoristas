@@ -572,8 +572,7 @@ function renderTabla() {
           ${p.nombre}
           ${critico ? '<div class="estado-critico">Disponibilidad crítica</div>' : ''}
           <div>
-            ${p.url_producto ? `<a class="ver" href="${p.url_producto}" target="_blank" rel="noopener">Ver ficha en Maxiconsumo ↗</a>` : ''}
-            <a class="ver ${p.url_producto ? 'ver-directo' : ''}" href="${urlBusquedaSku(p.sku)}" target="_blank" rel="noopener">${p.url_producto ? '(o buscar por SKU)' : 'Buscar por SKU ↗'}</a>
+            <a class="ver" href="${urlBusquedaSku(p.sku)}" target="_blank" rel="noopener">Confirmar en página ↗</a>
           </div>
         </td>
         <td class="rubro-tag">${nombreRubro(p.categoria_raiz)}</td>
@@ -716,11 +715,9 @@ function renderLista() {
           ⚠️ Este precio es solo si comprás el pack cerrado completo.
           Antes de comprar, entrá a la página del producto para ver la
           disponibilidad y elegir la cantidad correcta del pack:
-          ${producto.url_producto ? `<a href="${producto.url_producto}" target="_blank" rel="noopener" class="link-confirmar link-recomendado">Ver ficha (recomendado) ↗</a>` : ''}
-          <a href="${urlBusquedaSku(producto.sku)}" target="_blank" rel="noopener" class="link-confirmar ${producto.url_producto ? '' : 'link-recomendado'}">
-            Buscar por SKU ↗
+          <a href="${urlBusquedaSku(producto.sku)}" target="_blank" rel="noopener" class="link-confirmar link-recomendado">
+            Confirmar en página ↗
           </a>
-          <div class="nota-link-roto">Si el primer link no funciona, probá el otro - a veces Maxiconsumo reorganiza categorías o el link queda roto</div>
         </div>
         ` : ''}
         <button class="lista-item-quitar" onclick="quitarDeLista('${producto.sku}')">Quitar</button>
