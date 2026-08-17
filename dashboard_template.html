@@ -413,12 +413,14 @@ const ESTADO_RUBROS = __ESTADO_RUBROS_JSON__;
 
 const fmtMoney = (n) => n == null ? null : new Intl.NumberFormat('es-AR', {minimumFractionDigits: 2, maximumFractionDigits: 2}).format(n);
 
-function urlBusqueda(nombre) {
-  // Link de búsqueda por nombre - más robusto que el link directo al
-  // producto, porque no depende de que Maxiconsumo no haya movido el
-  // producto de categoría (cosa que rompe el link directo seguido,
-  // sin que nuestro sistema de chequeo de precios lo detecte).
-  return `https://www.maxiconsumo.com/sucursal_trelew/catalogsearch/result/?q=${encodeURIComponent(nombre)}`;
+function urlBusquedaSku(sku) {
+  // Búsqueda por SKU (el código interno de Maxiconsumo) - un solo
+  // token, sin espacios ni palabras raras, así que es mucho menos
+  // propenso a romper su motor de búsqueda que mandar el nombre
+  // completo del producto (con peso y todo). Sirve de respaldo
+  // cuando el link directo (url_producto) está roto - pasa cuando
+  // Maxiconsumo reorganiza categorías después de que scrapeamos.
+  return `https://www.maxiconsumo.com/sucursal_trelew/catalogsearch/result/?q=${encodeURIComponent(sku)}`;
 }
 
 function nombreRubro(raiz) {
@@ -570,8 +572,8 @@ function renderTabla() {
           ${p.nombre}
           ${critico ? '<div class="estado-critico">Disponibilidad crítica</div>' : ''}
           <div>
-            <a class="ver" href="${urlBusqueda(p.nombre)}" target="_blank" rel="noopener">Buscar en Maxiconsumo ↗</a>
-            ${p.url_producto ? `<a class="ver ver-directo" href="${p.url_producto}" target="_blank" rel="noopener">(o probar link directo)</a>` : ''}
+            ${p.url_producto ? `<a class="ver" href="${p.url_producto}" target="_blank" rel="noopener">Ver ficha en Maxiconsumo ↗</a>` : ''}
+            <a class="ver ${p.url_producto ? 'ver-directo' : ''}" href="${urlBusquedaSku(p.sku)}" target="_blank" rel="noopener">${p.url_producto ? '(o buscar por SKU)' : 'Buscar por SKU ↗'}</a>
           </div>
         </td>
         <td class="rubro-tag">${nombreRubro(p.categoria_raiz)}</td>
@@ -714,11 +716,11 @@ function renderLista() {
           ⚠️ Este precio es solo si comprás el pack cerrado completo.
           Antes de comprar, entrá a la página del producto para ver la
           disponibilidad y elegir la cantidad correcta del pack:
-          ${producto.url_producto ? `<a href="${producto.url_producto}" target="_blank" rel="noopener" class="link-confirmar">Link directo ↗</a>` : ''}
-          <a href="${urlBusqueda(producto.nombre)}" target="_blank" rel="noopener" class="link-confirmar link-recomendado">
-            Buscar en Maxiconsumo (recomendado) ↗
+          ${producto.url_producto ? `<a href="${producto.url_producto}" target="_blank" rel="noopener" class="link-confirmar link-recomendado">Ver ficha (recomendado) ↗</a>` : ''}
+          <a href="${urlBusquedaSku(producto.sku)}" target="_blank" rel="noopener" class="link-confirmar ${producto.url_producto ? '' : 'link-recomendado'}">
+            Buscar por SKU ↗
           </a>
-          <div class="nota-link-roto">Preferí el link de búsqueda - el directo a veces se rompe si Maxiconsumo reorganiza categorías</div>
+          <div class="nota-link-roto">Si el primer link no funciona, probá el otro - a veces Maxiconsumo reorganiza categorías o el link queda roto</div>
         </div>
         ` : ''}
         <button class="lista-item-quitar" onclick="quitarDeLista('${producto.sku}')">Quitar</button>
