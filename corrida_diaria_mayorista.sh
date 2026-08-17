@@ -13,7 +13,7 @@
 #   - el estado inicial armado (python elegir_referencias.py)
 #
 # Instalación en el cron (crontab -e):
-#   0 3 * * * /home/lcv/indice-mayorista/corrida_diaria_mayorista.sh >> /home/lcv/indice-mayorista/cron.log 2>&1
+#   0 3 * * * /home/lcv/tabla_mayoristas/corrida_diaria_mayorista.sh >> /home/lcv/tabla_mayoristas/cron.log 2>&1
 
 set -e  # si algo falla, cortamos - no seguimos con pasos que dependen del anterior
 
@@ -43,6 +43,17 @@ else
   echo ""
   echo "No hubo scrapes completos nuevos hoy (probablemente sin cambios de precio) - nada para cargar a SQLite."
 fi
+
+# Regeneramos el dashboard público SIEMPRE, haya habido cambios de
+# precio o no - porque también hay que reflejar cambios en la
+# plantilla (dashboard_template.html) aunque los datos no se hayan
+# movido. Es una operación barata: solo lee la base SQLite local, no
+# pide nada a Maxiconsumo, así que no complica correrla todos los días.
+# Escribe en public/dashboard.html por defecto, que es la ruta que
+# sirve Nginx (alias /home/lcv/tabla_mayoristas/public/).
+echo ""
+echo "Regenerando dashboard público..."
+python generar_dashboard.py
 
 echo ""
 echo "Corrida terminada: $(date -Iseconds)"

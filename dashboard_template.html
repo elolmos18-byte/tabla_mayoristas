@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Índice Mayorista — Maxiconsumo Trelew</title>
+<!-- Fuse.js: hace el matching difuso del buscador de productos.
+     Reemplaza la comparación palabra por palabra que había antes
+     (ver notas en el <script> más abajo, sección BUSCADOR). -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/7.0.0/fuse.min.js"></script>
 <style>
   :root {
     --ink: #1c1917;
@@ -409,41 +413,6 @@ const ESTADO_RUBROS = __ESTADO_RUBROS_JSON__;
 
 const fmtMoney = (n) => n == null ? null : new Intl.NumberFormat('es-AR', {minimumFractionDigits: 2, maximumFractionDigits: 2}).format(n);
 
-// Distancia de edición entre 2 palabras (cuántas letras hay que
-// cambiar/agregar/sacar para pasar de una a otra). Se usa para tolerar
-// errores de tipeo o variantes de escritura (ej. "spaguetti" vs
-// "spaghetti" - la gente escribe la fonética en español, el catálogo
-// usa la ortografía italiana/inglesa).
-function distanciaEdicion(a, b) {
-  const m = a.length, n = b.length;
-  if (m === 0) return n;
-  if (n === 0) return m;
-  const dp = Array.from({length: m + 1}, () => new Array(n + 1).fill(0));
-  for (let i = 0; i <= m; i++) dp[i][0] = i;
-  for (let j = 0; j <= n; j++) dp[0][j] = j;
-  for (let i = 1; i <= m; i++) {
-    for (let j = 1; j <= n; j++) {
-      const costo = a[i-1] === b[j-1] ? 0 : 1;
-      dp[i][j] = Math.min(
-        dp[i-1][j] + 1,
-        dp[i][j-1] + 1,
-        dp[i-1][j-1] + costo
-      );
-    }
-  }
-  return dp[m][n];
-}
-
-function palabraCoincide(palabraBusqueda, nombreLower, tokens) {
-  // 1) match exacto por substring (rápido, cubre la mayoría de los casos)
-  if (nombreLower.includes(palabraBusqueda)) return true;
-  // 2) fallback difuso: solo si el match exacto falló, comparamos la
-  // palabra buscada contra cada palabra suelta del nombre, tolerando
-  // unas pocas letras de diferencia (proporcional al largo de la palabra)
-  const tolerancia = Math.min(2, Math.max(1, Math.floor(palabraBusqueda.length / 4)));
-  return tokens.some(t => distanciaEdicion(t, palabraBusqueda) <= tolerancia);
-}
-
 function urlBusqueda(nombre) {
   // Link de búsqueda por nombre - más robusto que el link directo al
   // producto, porque no depende de que Maxiconsumo no haya movido el
@@ -497,9 +466,29 @@ const productos = DATA.map(p => ({
   precio_unitario: p.precio_unitario ? parseFloat(p.precio_unitario) : null,
   precio_bulto_cerrado_normalizado: p.precio_bulto_cerrado_normalizado ? parseFloat(p.precio_bulto_cerrado_normalizado) : null,
   precio_unitario_normalizado: p.precio_unitario_normalizado ? parseFloat(p.precio_unitario_normalizado) : null,
-  _nombreLower: p.nombre.toLowerCase(),
-  _tokens: p.nombre.toLowerCase().split(/\s+/),
 }));
+
+// ============ BUSCADOR ============
+// Antes esto se resolvía a mano: se partía la búsqueda en palabras y
+// se exigía que TODAS matchearan (exacto o con 1-2 letras de tolerancia)
+// en algún lugar del nombre. Era todo-o-nada por palabra: si escribías
+// "galletitas dulces rumba" y el producto no tenía la palabra "dulces"
+// en ningún lado, quedaba afuera aunque el resto coincidiera bien.
+//
+// Fuse.js reemplaza eso por un puntaje de similitud entre la frase
+// completa que escribiste y el nombre completo del producto - no exige
+// que cada palabra suelta pase su propio examen, tolera que sobren o
+// falten palabras, tolera errores de tipeo, y no importa el orden.
+//
+// threshold: 0 = exige match perfecto, 1 = deja pasar cualquier cosa.
+// 0.4 es el punto medio que charlamos: bastante tolerante a tipeos y
+// palabras de más/de menos, pero sigue filtrando lo que no tiene
+// relación real con lo que buscaste.
+const fuse = new Fuse(productos, {
+  keys: ['nombre'],
+  threshold: 0.4,
+  ignoreLocation: true, // no importa en qué parte del nombre esté la coincidencia
+});
 
 // Poblar el select de rubros
 const rubros = [...new Set(productos.map(p => p.categoria_raiz))].sort();
@@ -515,18 +504,21 @@ let colOrdenTabla = null;
 let colOrdenDir = 1;
 
 function renderTabla() {
-  const q = document.getElementById('buscador').value.trim().toLowerCase();
+  const q = document.getElementById('buscador').value.trim();
   const rubroFiltro = selectRubro.value;
   const ocultarSinPrecio = document.getElementById('ocultarSinPrecio').checked;
   ordenActual = document.getElementById('ordenarPor').value;
 
-  let filtrados = productos.filter(p => {
-    const palabras = q.split(/\s+/).filter(Boolean);
-    const matchNombre = palabras.length === 0 || palabras.every(palabra => palabraCoincide(palabra, p._nombreLower, p._tokens));
+  // Si hay texto en el buscador, Fuse ya devuelve solo los productos
+  // que superan el umbral de similitud, ordenados de mejor a peor
+  // match. Si no hay texto, arrancamos del catálogo completo.
+  const candidatos = q ? fuse.search(q).map(r => r.item) : productos;
+
+  let filtrados = candidatos.filter(p => {
     const matchRubro = !rubroFiltro || p.categoria_raiz === rubroFiltro;
     const tienePrecio = p.precio_bulto_cerrado != null || p.precio_unitario != null;
     const matchPrecio = !ocultarSinPrecio || tienePrecio;
-    return matchNombre && matchRubro && matchPrecio;
+    return matchRubro && matchPrecio;
   });
 
   // Orden
@@ -541,7 +533,10 @@ function renderTabla() {
       if (colOrdenTabla === 'normalizado_unitario') { va = a.precio_unitario_normalizado ?? Infinity; vb = b.precio_unitario_normalizado ?? Infinity; return colOrdenDir * (va - vb); }
       return 0;
     });
-  } else {
+  } else if (!q) {
+    // El orden por precio/nombre del combo solo tiene sentido cuando
+    // no hay búsqueda activa - si hay búsqueda, respetamos el orden
+    // por relevancia que ya trae Fuse (mejor match primero).
     if (ordenActual === 'precio_norm_asc') {
       filtrados.sort((a, b) => (a.precio_bulto_cerrado_normalizado ?? Infinity) - (b.precio_bulto_cerrado_normalizado ?? Infinity));
     } else if (ordenActual === 'precio_norm_desc') {
@@ -620,6 +615,9 @@ document.querySelectorAll('thead th[data-col]').forEach(th => {
 // ============ LISTA DE COMPRAS ============
 // Vive solo en memoria (variable JS) - se pierde si recargás la página.
 // Por eso el botón "Copiar lista" para sacarla antes de cerrar.
+// (Nota: esta parte no se tocó en este cambio - queda igual que antes.
+// La persistencia atada al telegram_id del Guardián es un cambio aparte,
+// todavía por charlar/implementar.)
 const lista = {}; // { sku: { producto, cantidad } }
 
 function toggleLista(abrir) {
