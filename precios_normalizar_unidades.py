@@ -50,6 +50,54 @@ def normalizar(texto: str) -> str:
     return sin_acentos.lower()
 
 
+def convertir_numero_ar(texto: str) -> float:
+    """
+    Convierte un numero escrito "a la argentina" a float.
+
+    Regla: la COMA siempre es separador decimal (si aparece, todo punto
+    antes de ella es separador de miles y se descarta). Si NO hay coma
+    pero SI hay un punto, hay que decidir si ese punto es decimal o
+    separador de miles - y ahi es donde estaba el bug real:
+
+        "1.125 CC" en un catalogo argentino significa "mil ciento
+        veinticinco cc" (1125), NO "uno coma ciento veinticinco cc"
+        (que seria un volumen absurdo, menos de un mililitro y medio
+        para una botella de vino). El punto ahi es separador de miles.
+
+    Para distinguir sin ambiguedad: si la parte despues del punto tiene
+    EXACTAMENTE 3 digitos, es separador de miles (asi se escriben los
+    miles siempre: de a 3 en 3). Si tiene 1 o 2 digitos, es un decimal
+    genuino (ej. "2.5 kg" son dos kilos y medio, no dos mil quinientos).
+
+    >>> convertir_numero_ar("1.125")   # separador de miles
+    1125.0
+    >>> convertir_numero_ar("2.5")     # decimal genuino
+    2.5
+    >>> convertir_numero_ar("1,35")    # coma = decimal, siempre
+    1.35
+    >>> convertir_numero_ar("2, 255")  # coma con espacio (typo de catalogo)
+    2.255
+    """
+    texto = texto.strip()
+
+    if "," in texto:
+        entero, _, decimal = texto.rpartition(",")
+        entero = entero.replace(".", "").replace(" ", "")
+        decimal = decimal.replace(" ", "")
+        entero = entero or "0"
+        return float(f"{entero}.{decimal}")
+
+    if "." in texto:
+        entero, _, fraccion = texto.partition(".")
+        if len(fraccion) == 3:
+            # separador de miles (ej. "1.125" -> 1125)
+            return float(entero + fraccion)
+        # decimal genuino (ej. "2.5" -> 2.5, "800.55" -> 800.55)
+        return float(texto)
+
+    return float(texto)
+
+
 # --- Extraccion de tamano ----------------------------------------------
 # Para comparar precios entre presentaciones distintas (500g vs 1kg),
 # necesitamos saber cuanto pesa/mide cada producto.
@@ -72,24 +120,58 @@ def normalizar(texto: str) -> str:
 PESO_MAXIMO_GRAMOS = 50_000
 VOLUMEN_MAXIMO_ML = 50_000
 
+# Piso de sanidad: ningun producto de super/mayorista se vende
+# individualmente en menos de unos pocos gramos/mililitros (el caso
+# real que motivo esto: "AMARGO TERMA 1,35 CC" - la coma ahi es un
+# decimal genuino segun la notacion argentina, pero interpretado literal
+# da 1.35 mililitros, un volumen absurdo para una botella. Es una
+# inconsistencia del propio catalogo (probablemente querian decir otra
+# cosa), no algo que podamos "adivinar" con confianza - mejor devolver
+# None (no pudimos normalizar) que un numero falso.
+PESO_MINIMO_GRAMOS = 1
+VOLUMEN_MINIMO_ML = 5
+
 
 def extraer_gramos(nombre_norm: str) -> float | None:
     """Extrae el peso en gramos de un nombre normalizado."""
+    # Patron multiplicador: "24x10 gr", "24 x 10 gr", "3x1 kg" - comun en
+    # productos vendidos en multipack (ej. "CHOCOLATE SAPITO 24X10 GR" =
+    # 24 unidades de 10gr = 240gr TOTALES, no 10gr). Sin este chequeo, el
+    # peso individual se confundia con el peso total, inflando el precio
+    # por kg calculado en un factor igual al multiplicador (bug real
+    # encontrado en el catalogo de Maxiconsumo: "24X10 gr" y "16X16 GR"
+    # daban $/kg absurdos, 16-24 veces mas caros de lo real).
+    m = re.search(r"(\d+)\s*x\s*(\d+(?:[.,]\s?\d+)?)\s*(?:kg|kilo)\b", nombre_norm)
+    if m:
+        cantidad = float(m.group(1))
+        peso_unitario_kg = convertir_numero_ar(m.group(2))
+        gramos = cantidad * peso_unitario_kg * 1000
+        if gramos > PESO_MAXIMO_GRAMOS or gramos < PESO_MINIMO_GRAMOS:
+            return None
+        return gramos
+
+    m = re.search(r"(\d+)\s*x\s*(\d+(?:[.,]\s?\d+)?)\s*(?:grs|gr|g)\b", nombre_norm)
+    if m:
+        cantidad = float(m.group(1))
+        peso_unitario = convertir_numero_ar(m.group(2))
+        gramos = cantidad * peso_unitario
+        if gramos > PESO_MAXIMO_GRAMOS or gramos < PESO_MINIMO_GRAMOS:
+            return None
+        return gramos
+
     # Primero buscamos kg (con coma, punto, o coma+espacio como decimal)
     m = re.search(r"(\d+(?:[.,]\s?\d+)?)\s*(?:kg|kilo)", nombre_norm)
     if m:
-        valor = m.group(1).replace(" ", "").replace(",", ".")
-        gramos = float(valor) * 1000
-        if gramos > PESO_MAXIMO_GRAMOS:
+        gramos = convertir_numero_ar(m.group(1)) * 1000
+        if gramos > PESO_MAXIMO_GRAMOS or gramos < PESO_MINIMO_GRAMOS:
             return None  # Typo: "500 Kg" en vez de "500 g"
         return gramos
 
     # Despues buscamos gramos directos
     m = re.search(r"(\d+(?:[.,]\s?\d+)?)\s*(?:grs|gr|g)\b", nombre_norm)
     if m:
-        valor = m.group(1).replace(" ", "").replace(",", ".")
-        gramos = float(valor)
-        if gramos > PESO_MAXIMO_GRAMOS:
+        gramos = convertir_numero_ar(m.group(1))
+        if gramos > PESO_MAXIMO_GRAMOS or gramos < PESO_MINIMO_GRAMOS:
             return None
         return gramos
 
@@ -106,21 +188,39 @@ def extraer_gramos(nombre_norm: str) -> float | None:
 
 def extraer_mililitros(nombre_norm: str) -> float | None:
     """Extrae el volumen en mililitros de un nombre normalizado."""
+    # Mismo patron multiplicador que extraer_gramos, para volumen
+    # (ej. "GASEOSA COCA COLA 6X500 ML" = 6 botellas de 500ml = 3000ml)
+    m = re.search(r"(\d+)\s*x\s*(\d+(?:[.,]\s?\d+)?)\s*(?:litros?|lts|lt|l)\b", nombre_norm)
+    if m:
+        cantidad = float(m.group(1))
+        vol_unitario_l = convertir_numero_ar(m.group(2))
+        ml = cantidad * vol_unitario_l * 1000
+        if ml > VOLUMEN_MAXIMO_ML or ml < VOLUMEN_MINIMO_ML:
+            return None
+        return ml
+
+    m = re.search(r"(\d+)\s*x\s*(\d+(?:[.,]\s?\d+)?)\s*(?:ml|cc)\b", nombre_norm)
+    if m:
+        cantidad = float(m.group(1))
+        vol_unitario = convertir_numero_ar(m.group(2))
+        ml = cantidad * vol_unitario
+        if ml > VOLUMEN_MAXIMO_ML or ml < VOLUMEN_MINIMO_ML:
+            return None
+        return ml
+
     # Buscamos litros (con coma, punto, o coma+espacio como decimal)
     m = re.search(r"(\d+(?:[.,]\s?\d+)?)\s*(?:litros?|lts|lt|l)\b", nombre_norm)
     if m:
-        valor = m.group(1).replace(" ", "").replace(",", ".")
-        ml = float(valor) * 1000
-        if ml > VOLUMEN_MAXIMO_ML:
+        ml = convertir_numero_ar(m.group(1)) * 1000
+        if ml > VOLUMEN_MAXIMO_ML or ml < VOLUMEN_MINIMO_ML:
             return None
         return ml
 
     # Buscamos ml o cc directos
     m = re.search(r"(\d+(?:[.,]\s?\d+)?)\s*(?:ml|cc)\b", nombre_norm)
     if m:
-        valor = m.group(1).replace(" ", "").replace(",", ".")
-        ml = float(valor)
-        if ml > VOLUMEN_MAXIMO_ML:
+        ml = convertir_numero_ar(m.group(1))
+        if ml > VOLUMEN_MAXIMO_ML or ml < VOLUMEN_MINIMO_ML:
             return None
         return ml
 
